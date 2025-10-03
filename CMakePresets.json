@@ -1,0 +1,128 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24
+  },
+  "configurePresets": [
+    {
+      "name": "gcc",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++",
+        "WARNING_FLAGS": "-Wall;-Wextra;-Wpedantic;-Wconversion;-Wsign-conversion;-Wshadow;-Wduplicated-branches;-Wduplicated-cond;-Wlogical-op;-Wnull-dereference;-Wuseless-cast;-Wdouble-promotion;-Wold-style-cast;-Wformat=2;-Wundef;-Wcast-align;-Wcast-qual;-Wdisabled-optimization;-Wredundant-decls;-Wunsafe-loop-optimizations;-Wnoexcept;-Wsuggest-final-types;-Wsuggest-final-methods;-Wsuggest-override"
+      }
+    },
+    {
+      "name": "multi",
+      "displayName": "Multi-Configuration Preset",
+      "inherits": "gcc",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "build/multi",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Devel;Release;Debug;UBSan;ASan",
+        "CMAKE_CXX_FLAGS_DEVEL": "-O2 -g -fno-omit-frame-pointer -march=native",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG -march=native",
+        "CMAKE_CXX_FLAGS_DEBUG": "-Og -ggdb",
+        "CMAKE_CXX_FLAGS_UBSAN": "-O2 -g -fno-omit-frame-pointer -march=native -fsanitize=undefined",
+        "CMAKE_CXX_FLAGS_ASAN": "-O2 -g -fno-omit-frame-pointer -march=native -fsanitize=address"
+      }
+    },
+    {
+      "name": "devel",
+      "displayName": "Development Preset",
+      "inherits": "gcc",
+      "binaryDir": "build/devel",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Devel",
+        "CMAKE_CXX_FLAGS_DEVEL": "-O2 -g -fno-omit-frame-pointer -march=native"
+      },
+      "warnings": {
+        "dev": true,
+        "uninitialized": true
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release Preset",
+      "inherits": "gcc",
+      "binaryDir": "build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG -march=native"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug Preset",
+      "inherits": "gcc",
+      "binaryDir": "build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS_DEBUG": "-Og -ggdb -march=native"
+      }
+    },
+    {
+      "name": "ubsan",
+      "displayName": "UBSAN Preset",
+      "inherits": "gcc",
+      "binaryDir": "build/ubsan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "UBSan",
+        "CMAKE_CXX_FLAGS_UBSAN": "-O2 -g -fno-omit-frame-pointer -march=native -fsanitize=undefined"
+      }
+    },
+    {
+      "name": "asan",
+      "displayName": "ASAN Preset",
+      "inherits": "gcc",
+      "binaryDir": "build/asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "ASan",
+        "CMAKE_CXX_FLAGS_ASAN": "-O2 -g -fno-omit-frame-pointer -march=native -fsanitize=address"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "multi",
+      "displayName": "Multi-Configuration Preset",
+      "configurePreset": "multi"
+    },
+    {
+      "name": "devel",
+      "displayName": "Development Preset",
+      "configurePreset": "devel"
+    },
+    {
+      "name": "release",
+      "displayName": "Release Preset",
+      "configurePreset": "release"
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug preset",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "ubsan",
+      "displayName": "UBSAN Preset",
+      "configurePreset": "ubsan"
+    },
+    {
+      "name": "asan",
+      "displayName": "ASAN Preset",
+      "configurePreset": "asan"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default",
+      "configurePreset": "debug",
+      "output": {"outputOnFailure": true},
+      "execution": {"noTestsAction": "error", "stopOnFailure": true}
+    }
+  ]
+}
