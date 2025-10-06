@@ -69,7 +69,7 @@ std::vector<T> generate_data(std::size_t n, T min_val, T max_val) {
 template <typename PQ>
 static void BM_HeapSort(benchmark::State& state) {
     using T = typename PQ::value_type;
-    int n = state.range(0);
+    int n = static_cast<int>(state.range(0));
     auto data = generate_data<T>(static_cast<std::size_t>(n), 0, n);
     for (auto _ : state) {
         state.PauseTiming();
@@ -89,7 +89,7 @@ static void BM_HeapSort(benchmark::State& state) {
 template <typename PQ>
 static void BM_HeapSortSmall(benchmark::State& state) {
     using T = typename PQ::value_type;
-    int n = state.range(0);
+    int n = static_cast<int>(state.range(0));
     auto data = generate_data<T>(static_cast<std::size_t>(n), 0, 1000);
 
     for (auto _ : state) {
@@ -109,7 +109,7 @@ static void BM_HeapSortSmall(benchmark::State& state) {
 
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_GrowShrinkMonotonic(benchmark::State& state) {
-    int n = state.range(0);
+    int n = static_cast<int>(state.range(0));
     auto data = generate_data(static_cast<std::size_t>(3 * n), 0, n);
 
     for (auto _ : state) {
@@ -119,15 +119,15 @@ static void BM_GrowShrinkMonotonic(benchmark::State& state) {
         state.ResumeTiming();
 
         for (int i = 0; i < n; ++i) {
-            pq.push(last + data[2 * i]);
-            pq.push(last + data[2 * i + 1]);
+            pq.push(last + data[static_cast<std::size_t>(2 * i)]);
+            pq.push(last + data[static_cast<std::size_t>(2 * i + 1)]);
             last = pq.top();
             pq.pop();
         }
         for (int i = 2 * n; i < 3 * n; ++i) {
             last = pq.top();
             pq.pop();
-            pq.push(last + data[i]);
+            pq.push(last + data[static_cast<std::size_t>(i)]);
             pq.pop();
         }
     }
@@ -136,7 +136,7 @@ static void BM_GrowShrinkMonotonic(benchmark::State& state) {
 
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_GrowShrinkMonotonicSmall(benchmark::State& state) {
-    int n = state.range(0);
+    int n = static_cast<int>(state.range(0));
     auto data = generate_data(static_cast<std::size_t>(3 * n), 0, 1000);
 
     for (auto _ : state) {
@@ -146,15 +146,15 @@ static void BM_GrowShrinkMonotonicSmall(benchmark::State& state) {
         state.ResumeTiming();
 
         for (int i = 0; i < n; ++i) {
-            pq.push(last + data[2 * i]);
-            pq.push(last + data[2 * i + 1]);
+            pq.push(last + data[static_cast<std::size_t>(2 * i)]);
+            pq.push(last + data[static_cast<std::size_t>(2 * i + 1)]);
             last = pq.top();
             pq.pop();
         }
         for (int i = 2 * n; i < 3 * n; ++i) {
             last = pq.top();
             pq.pop();
-            pq.push(last + data[i]);
+            pq.push(last + data[static_cast<std::size_t>(i)]);
             pq.pop();
         }
     }
@@ -163,23 +163,22 @@ static void BM_GrowShrinkMonotonicSmall(benchmark::State& state) {
 
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_GrowShrinkRandom(benchmark::State& state) {
-    int n = state.range(0);
+    int n = static_cast<int>(state.range(0));
     auto data = generate_data(static_cast<std::size_t>(3 * n), 0, n);
 
     for (auto _ : state) {
         state.PauseTiming();
         PQ pq;
-        T last = 0;
         state.ResumeTiming();
 
         for (int i = 0; i < n; ++i) {
-            pq.push(data[2 * i]);
-            pq.push(data[2 * i + 1]);
+            pq.push(data[static_cast<std::size_t>(2 * i)]);
+            pq.push(data[static_cast<std::size_t>(2 * i + 1)]);
             pq.pop();
         }
         for (int i = 2 * n; i < 3 * n; ++i) {
             pq.pop();
-            pq.push(data[i]);
+            pq.push(data[static_cast<std::size_t>(i)]);
             pq.pop();
         }
     }
@@ -188,23 +187,22 @@ static void BM_GrowShrinkRandom(benchmark::State& state) {
 
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_GrowShrinkRandomSmall(benchmark::State& state) {
-    int n = state.range(0);
+    int n = static_cast<int>(state.range(0));
     auto data = generate_data(static_cast<std::size_t>(3 * n), 0, 1000);
 
     for (auto _ : state) {
         state.PauseTiming();
         PQ pq;
-        T last = 0;
         state.ResumeTiming();
 
         for (int i = 0; i < n; ++i) {
-            pq.push(data[2 * i]);
-            pq.push(data[2 * i + 1]);
+            pq.push(data[static_cast<std::size_t>(2 * i)]);
+            pq.push(data[static_cast<std::size_t>(2 * i + 1)]);
             pq.pop();
         }
         for (int i = 2 * n; i < 3 * n; ++i) {
             pq.pop();
-            pq.push(data[i]);
+            pq.push(data[static_cast<std::size_t>(i)]);
             pq.pop();
         }
     }
@@ -213,21 +211,21 @@ static void BM_GrowShrinkRandomSmall(benchmark::State& state) {
 
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_PushPopMonotonic(benchmark::State& state) {
-    int n = state.range(0);
+    int n = static_cast<int>(state.range(0));
     auto data = generate_data(static_cast<std::size_t>(2 * n), 0, n);
 
     for (auto _ : state) {
         state.PauseTiming();
         PQ pq;
         for (int i = 0; i < n; ++i) {
-            pq.push(data[i]);
+            pq.push(data[static_cast<std::size_t>(i)]);
         }
         state.ResumeTiming();
 
         for (int i = n; i < 2 * n; ++i) {
             auto last = pq.top();
             pq.pop();
-            pq.push(last + data[i]);
+            pq.push(last + data[static_cast<std::size_t>(i)]);
         }
     }
     state.SetComplexityN(n);
@@ -235,21 +233,21 @@ static void BM_PushPopMonotonic(benchmark::State& state) {
 
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_PushPopMonotonicSmall(benchmark::State& state) {
-    int n = state.range(0);
+    int n = static_cast<int>(state.range(0));
     auto data = generate_data(static_cast<std::size_t>(2 * n), 0, n);
 
     for (auto _ : state) {
         state.PauseTiming();
         PQ pq;
         for (int i = 0; i < n; ++i) {
-            pq.push(data[i]);
+            pq.push(data[static_cast<std::size_t>(i)]);
         }
         state.ResumeTiming();
 
         for (int i = n; i < 2 * n; ++i) {
             auto last = pq.top();
             pq.pop();
-            pq.push(last + data[i]);
+            pq.push(last + data[static_cast<std::size_t>(i)]);
         }
     }
     state.SetComplexityN(n);
@@ -257,20 +255,20 @@ static void BM_PushPopMonotonicSmall(benchmark::State& state) {
 
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_PushPopRandom(benchmark::State& state) {
-    int n = state.range(0);
+    int n = static_cast<int>(state.range(0));
     auto data = generate_data(static_cast<std::size_t>(2 * n), 0, n);
 
     for (auto _ : state) {
         state.PauseTiming();
         PQ pq;
         for (int i = 0; i < n; ++i) {
-            pq.push(data[i]);
+            pq.push(data[static_cast<std::size_t>(i)]);
         }
         state.ResumeTiming();
 
         for (int i = n; i < 2 * n; ++i) {
             pq.pop();
-            pq.push(data[i]);
+            pq.push(data[static_cast<std::size_t>(i)]);
         }
     }
     state.SetComplexityN(n);
@@ -278,20 +276,20 @@ static void BM_PushPopRandom(benchmark::State& state) {
 
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_PushPopRandomSmall(benchmark::State& state) {
-    int n = state.range(0);
+    int n = static_cast<int>(state.range(0));
     auto data = generate_data(static_cast<std::size_t>(2 * n), 0, n);
 
     for (auto _ : state) {
         state.PauseTiming();
         PQ pq;
         for (int i = 0; i < n; ++i) {
-            pq.push(data[i]);
+            pq.push(data[static_cast<std::size_t>(i)]);
         }
         state.ResumeTiming();
 
         for (int i = n; i < 2 * n; ++i) {
             pq.pop();
-            pq.push(data[i]);
+            pq.push(data[static_cast<std::size_t>(i)]);
         }
     }
     state.SetComplexityN(n);
@@ -306,13 +304,14 @@ static constexpr int max_range = 1 << 22;
         ->Complexity(benchmark::oNLogN);                   \
     BENCHMARK_TEMPLATE(BM_##NAME##Small, PQ<std::int32_t>) \
         ->Range(min_range, max_range)                      \
-        ->Complexity(benchmark::oNLogN);                   
-    // BENCHMARK_TEMPLATE(BM_##NAME, PQ<std::int64_t>)        \
-    //     ->Range(min_range, max_range)                      \
-    //     ->Complexity(benchmark::oNLogN);                   \
-    // BENCHMARK_TEMPLATE(BM_##NAME##Small, PQ<std::int64_t>) \
-    //     ->Range(min_range, max_range)                      \
-    //     ->Complexity(benchmark::oNLogN);
+        ->Complexity(benchmark::oNLogN); /*                \
+    BENCHMARK_TEMPLATE(BM_##NAME, PQ<std::int64_t>)        \
+        ->Range(min_range, max_range)                      \
+        ->Complexity(benchmark::oNLogN);                   \
+    BENCHMARK_TEMPLATE(BM_##NAME##Small, PQ<std::int64_t>) \
+        ->Range(min_range, max_range)                      \
+        ->Complexity(benchmark::oNLogN);                   \
+*/
 
 RUN_BENCHMARKS(HeapSort, std_pq)
 // RUN_BENCHMARKS(HeapSort, mq_pq)

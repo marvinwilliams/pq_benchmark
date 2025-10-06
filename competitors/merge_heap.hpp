@@ -415,7 +415,8 @@ class merge_heap : private heap_base<T, Key, KeyExtractor, Comparator> {
                    value_compare(*(top_node_it - 1), *(push_buffer_it - 1))) {
                 --push_buffer_it;
             }
-            push_buffer_size_ = push_buffer_.end() - push_buffer_it;
+            push_buffer_size_ = static_cast<std::size_t>(
+                std::distance(push_buffer_it, push_buffer_.end()));
             while (top_node_it != data_.front().begin() &&
                    push_buffer_it != push_buffer_begin) {
                 if (value_compare(*(top_node_it - 1), *(push_buffer_it - 1))) {
@@ -430,7 +431,8 @@ class merge_heap : private heap_base<T, Key, KeyExtractor, Comparator> {
             while (push_buffer_it != push_buffer_begin) {
                 *(--pop_buffer_it) = std::move(*(--push_buffer_it));
             }
-            pop_buffer_size_ = pop_buffer_.end() - pop_buffer_it;
+            pop_buffer_size_ = static_cast<std::size_t>(
+                std::distance(pop_buffer_it, pop_buffer_.end()));
             pop_node();
         }
     }

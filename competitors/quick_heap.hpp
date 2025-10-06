@@ -13,9 +13,8 @@
 namespace quick_heap_detail {
 
 template <typename It, typename T, typename Comparator>
-std::size_t find_bucket(It pivots, int n, T e, Comparator comp) {
-    assert(n >= 0);
-    int i = 0;
+std::size_t find_bucket(It pivots, std::size_t n, T e, Comparator comp) {
+    std::size_t i = 0;
     while (i < n && comp(e, *pivots)) {
         ++i;
         ++pivots;
@@ -30,8 +29,6 @@ template <typename It, typename Comparator>
 It find_min(It data, int n, Comparator comp) {
     return std::min_element(data, data + n, comp);
 }
-
-}  // namespace quick_heap_detail
 
 template <typename T, typename Comparator = std::ranges::less,
           std::size_t PartitionThreshold = 16>
@@ -74,25 +71,24 @@ class QuickHeap {
                 *(equal_it++) = std::move(e);
             }
         }
-        buckets_[num_buckets_ + 1].resize(
-            std::distance(buckets_[num_buckets_ + 1].begin(), smaller_it));
-        buckets_[num_buckets_].resize(
-            std::distance(buckets_[num_buckets_].begin(), equal_it));
-        buckets_[num_buckets_ - 1].resize(
-            std::distance(buckets_[num_buckets_ - 1].begin(), larger_it));
+        buckets_[num_buckets_ + 1].resize(static_cast<std::size_t>(
+            std::distance(buckets_[num_buckets_ + 1].begin(), smaller_it)));
+        buckets_[num_buckets_].resize(static_cast<std::size_t>(
+            std::distance(buckets_[num_buckets_].begin(), equal_it)));
+        buckets_[num_buckets_ - 1].resize(static_cast<std::size_t>(
+            std::distance(buckets_[num_buckets_ - 1].begin(), larger_it)));
         assert(!buckets_[num_buckets_].empty());
         pivots_[num_buckets_ / 2] = pivot;
-        num_buckets_ += (buckets_[num_buckets_ + 1].empty() ? 1 : 2);
+        num_buckets_ += (buckets_[num_buckets_ + 1].empty() ? 1u : 2u);
     }
 
    public:
     explicit QuickHeap(Comparator comp = {})
-        : buckets_(128), pivots_(128), comp_(comp) {}
+        : pivots_(128), buckets_(128), comp_(comp) {}
 
     void push(T e) {
         assert(buckets_.size() >= (num_buckets_ | 1));
-        auto const b = quick_heap_detail::find_bucket(
-            pivots_.data(), num_buckets_ / 2, e, comp_);
+        auto const b = find_bucket(pivots_.data(), num_buckets_ / 2, e, comp_);
         assert(b < (num_buckets_ | 1));
         auto& bucket = buckets_[b];
         bucket.push_back(e);
@@ -121,7 +117,7 @@ class QuickHeap {
             partition_last_bucket();
         }
         if ((num_buckets_ & 1) == 1 && !buckets_[num_buckets_ - 1].empty()) {
-            auto m = quick_heap_detail::find_min(
+            auto m = find_min(
                 buckets_[num_buckets_ - 1].begin(),
                 static_cast<int>(buckets_[num_buckets_ - 1].size()), comp_);
             std::iter_swap(m, buckets_[num_buckets_ - 1].end() - 1);
@@ -136,3 +132,10 @@ class QuickHeap {
 
     bool empty() { return buckets_[num_buckets_ - 1].empty(); }
 };
+
+}  // namespace quick_heap_detail
+
+template <typename T, typename Comparator = std::ranges::less,
+          std::size_t PartitionThreshold = 16>
+using QuickHeap =
+    quick_heap_detail::QuickHeap<T, Comparator, PartitionThreshold>;
