@@ -10,7 +10,35 @@
 #include <limits>
 #include <vector>
 
+#define SKIP_AVX2_POPCNT
+#define WITH_LUT
+
 namespace quick_heap_avx2_detail {
+
+#ifdef WITH_LUT
+
+static constexpr std::array<std::uint64_t, 256> compress_lut = [] {
+    std::array<std::uint64_t, 256> lut = {};
+    for (std::uint64_t mask = 0; mask < 256; ++mask) {
+        std::uint64_t idx = 0;
+        for (std::uint64_t i = 0; i < 8; ++i) {
+            if ((mask & (1u << i)) != 0) {
+                lut[mask] |= (i << (idx * 8));
+                ++idx;
+            }
+        }
+    }
+    return lut;
+}();
+
+inline __m256i compress_left(__m256i v, unsigned int mask) {
+    assert(mask < 256);
+    auto const indices = static_cast<std::int64_t>(compress_lut[mask]);
+    return _mm256_permutevar8x32_epi32(
+        v, _mm256_cvtepu8_epi32(_mm_cvtsi64_si128(indices)));
+}
+
+#else
 
 inline __m256i compress_left(__m256i v, unsigned int mask) {
     auto const mask_expanded = _pdep_u64(mask, 0x0101010101010101) * 0xFF;
@@ -20,9 +48,11 @@ inline __m256i compress_left(__m256i v, unsigned int mask) {
         v, _mm256_cvtepu8_epi32(_mm_cvtsi64_si128(indices)));
 }
 
+#endif
+
 inline std::size_t num_greater_pivots(std::int32_t const *pivots, std::size_t n,
                                       std::int32_t e) {
-#if defined SKIP_AVX2_POPCNT
+#ifdef SKIP_AVX2_POPCNT
     __m256i const ones = _mm256_set1_epi32(-1);
 #endif
     __m256i const e_vec = _mm256_set1_epi32(e);
@@ -43,7 +73,7 @@ inline std::size_t num_greater_pivots(std::int32_t const *pivots, std::size_t n,
             __m256i const cmp2 = _mm256_cmpgt_epi32(data2, e_vec);
             __m256i const cmp3 = _mm256_cmpgt_epi32(data3, e_vec);
             __m256i const cmp4 = _mm256_cmpgt_epi32(data4, e_vec);
-#if defined SKIP_AVX2_POPCNT
+#ifdef SKIP_AVX2_POPCNT
             __m256i const comb1 = _mm256_and_si256(cmp1, cmp2);
             __m256i const comb2 = _mm256_and_si256(cmp3, cmp4);
             __m256i const comb3 = _mm256_and_si256(comb1, comb2);
@@ -64,7 +94,7 @@ inline std::size_t num_greater_pivots(std::int32_t const *pivots, std::size_t n,
                     _mm_popcnt_u32(static_cast<unsigned>(
                         _mm256_movemask_ps(_mm256_castsi256_ps(cmp4)))));
                 count += count1 + count2 + count3 + count4;
-#if defined SKIP_AVX2_POPCNT
+#ifdef SKIP_AVX2_POPCNT
                 return count;
             }
 #endif
@@ -74,14 +104,15 @@ inline std::size_t num_greater_pivots(std::int32_t const *pivots, std::size_t n,
         __m256i const data =
             _mm256_loadu_si256(reinterpret_cast<__m256i const *>(pivots));
         __m256i const cmp = _mm256_cmpgt_epi32(data, e_vec);
-#if defined SKIP_AVX2_POPCNT
+#ifdef SKIP_AVX2_POPCNT
         if (_mm256_testc_si256(cmp, ones)) {
             count += 8;
         } else {
 #endif
-            count += static_cast<std::size_t>(
-                _mm_popcnt_u32(static_cast<unsigned>(_mm256_movemask_ps(_mm256_castsi256_ps(cmp)))));
-#if defined SKIP_AVX2_POPCNT
+            count +=
+                static_cast<std::size_t>(_mm_popcnt_u32(static_cast<unsigned>(
+                    _mm256_movemask_ps(_mm256_castsi256_ps(cmp)))));
+#ifdef SKIP_AVX2_POPCNT
             return count;
         }
 #endif
@@ -93,7 +124,8 @@ inline std::size_t num_greater_pivots(std::int32_t const *pivots, std::size_t n,
             _mm256_loadu_si256(reinterpret_cast<__m256i const *>(pivots));
         __m256i const cmp = _mm256_cmpgt_epi32(data, e_vec);
         count += static_cast<std::size_t>(
-            _mm_popcnt_u32(static_cast<unsigned>(_mm256_movemask_ps(_mm256_castsi256_ps(cmp))) &
+            _mm_popcnt_u32(static_cast<unsigned>(
+                               _mm256_movemask_ps(_mm256_castsi256_ps(cmp))) &
                            ((1u << remaining) - 1u)));
     }
     return count;

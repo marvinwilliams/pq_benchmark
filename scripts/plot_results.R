@@ -3,7 +3,9 @@ library(dplyr)
 library(stringr)
 library(tidyr)
 
-results <- read.csv("./results.csv", stringsAsFactors = FALSE)
+input <- file("stdin")
+
+results <- read.csv(input, stringsAsFactors = FALSE)
 pattern <- "^BM_(\\w+)<(\\w+)<(.+)>>/(\\d+)$"
 
 parsed_data <- results %>%
@@ -17,7 +19,23 @@ parsed_data <- results %>%
     ) %>%
   select(workload, pq_type, data_type, size, real_time)
 
-parsed_data$pq_type <- factor(parsed_data$pq_type, levels = c("std_pq", "mq_pq", "merge_heap", "radix_heap", "quick_heap", "quick_heap_avx2", "boost_4_ary_heap", "boost_8_ary_heap", "boost_16_ary_heap", "fib_heap", "pairing_heap"))
+parsed_data$pq_type <- factor(parsed_data$pq_type, levels = c(
+                                                              "std_pq",
+                                                              "mq_pq",
+                                                              "merge_heap",
+                                                              "radix_heap",
+                                                              "quick_heap",
+                                                              "quick_heap_avx2",
+                                                              "quick_heap_avx2_skip_popcnt",
+                                                              "quick_heap_avx2_no_unroll",
+                                                              "quick_heap_avx2_with_lut",
+                                                              "quick_heap_avx2_with_lut_no_skip_popcnt",
+                                                              "boost_4_ary_heap",
+                                                              "boost_8_ary_heap",
+                                                              "boost_16_ary_heap",
+                                                              "fib_heap",
+                                                              "pairing_heap"
+                                                              ))
 
 plot <- ggplot(parsed_data, aes(x = size, y = real_time/size, color = pq_type, shape = pq_type)) +
   geom_line(alpha = 0.8) +
