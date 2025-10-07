@@ -1,7 +1,8 @@
 #include "competitors/merge_heap.hpp"
 #include "competitors/mq_heap.hpp"
 #include "competitors/quick_heap.hpp"
-#include "competitors/quick_heap_avx2.hpp"
+// #include "competitors/quick_heap_avx2.hpp"
+#include "competitors/quick_heap_avx2_no_equal.hpp"
 
 #include <tlx/container/radix_heap.hpp>
 
@@ -55,7 +56,7 @@ template <typename T>
 using quick_heap = QuickHeap<T>;
 
 template <typename T>
-using quick_heap_avx2 = QuickHeapAVX2<T>;
+using quick_heap_avx2 = QuickHeapAVX2NoEqual<T>;
 
 template <typename T>
 std::vector<T> generate_data(std::size_t n, T min_val, T max_val) {

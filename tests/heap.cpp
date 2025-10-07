@@ -2,6 +2,7 @@
 #include "competitors/mq_heap.hpp"
 #include "competitors/quick_heap.hpp"
 #include "competitors/quick_heap_avx2.hpp"
+#include "competitors/quick_heap_avx2_no_equal.hpp"
 
 #include "catch2/catch_template_test_macros.hpp"
 #include "catch2/generators/catch_generators_all.hpp"
@@ -19,6 +20,7 @@ TEMPLATE_TEST_CASE("heap supports basic operations", "[heap][basic]",
                    (multiqueue::Heap<int, std::ranges::greater>),
                    (QuickHeap<int, std::ranges::less>),
                    (QuickHeapAVX2<std::int32_t>),
+                   (QuickHeapAVX2NoEqual<std::int32_t>),
                    (multiqueue::value_merge_heap<int, std::ranges::less>)) {
     using heap_t = TestType;
 
@@ -119,6 +121,7 @@ TEMPLATE_TEST_CASE("heap works with randomized workloads", "[heap][workloads]",
                    (multiqueue::Heap<int, std::ranges::greater>),
                    (QuickHeap<int>),
                    (QuickHeapAVX2<std::int32_t>),
+                   (QuickHeapAVX2NoEqual<std::int32_t>),
                    (multiqueue::value_merge_heap<int, std::ranges::less>)) {
     using heap_t = TestType;
 

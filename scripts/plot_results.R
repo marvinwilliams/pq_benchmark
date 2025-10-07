@@ -30,6 +30,7 @@ parsed_data$pq_type <- factor(parsed_data$pq_type, levels = c(
                                                               "quick_heap_avx2_no_unroll",
                                                               "quick_heap_avx2_with_lut",
                                                               "quick_heap_avx2_with_lut_no_skip_popcnt",
+                                                              "quick_heap_avx2_no_equal",
                                                               "boost_4_ary_heap",
                                                               "boost_8_ary_heap",
                                                               "boost_16_ary_heap",
