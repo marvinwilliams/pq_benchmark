@@ -1,4 +1,5 @@
 #include "competitors/merge_heap.hpp"
+#include "competitors/merge_heap_avx2.hpp"
 #include "competitors/mq_heap.hpp"
 #include "competitors/quick_heap.hpp"
 #include "competitors/quick_heap_avx2.hpp"
@@ -21,7 +22,8 @@ TEMPLATE_TEST_CASE("heap supports basic operations", "[heap][basic]",
                    (QuickHeap<int, std::ranges::less>),
                    (QuickHeapAVX2<std::int32_t>),
                    (QuickHeapAVX2NoEqual<std::int32_t>),
-                   (multiqueue::value_merge_heap<int, std::ranges::less>)) {
+                   (multiqueue::value_merge_heap<int, std::ranges::less>),
+                   (MergeHeapAVX2<std::int32_t>)) {
     using heap_t = TestType;
 
     auto heap = heap_t{};
@@ -67,8 +69,7 @@ TEMPLATE_TEST_CASE("heap supports basic operations", "[heap][basic]",
     }
 }
 
-TEMPLATE_TEST_CASE("max heap",
-                   "[heap][comparator]",
+TEMPLATE_TEST_CASE("max heap", "[heap][comparator]",
                    (multiqueue::Heap<int, std::ranges::less>),
                    (QuickHeap<int, std::ranges::greater>),
                    (multiqueue::value_merge_heap<int, std::ranges::greater>)) {
@@ -82,7 +83,7 @@ TEMPLATE_TEST_CASE("max heap",
         }
 
         for (int i = 0; i < 1000; ++i) {
-            REQUIRE(heap.top() ==  999 - i);
+            REQUIRE(heap.top() == 999 - i);
             heap.pop();
         }
         REQUIRE(heap.empty());
@@ -119,10 +120,11 @@ TEMPLATE_TEST_CASE("max heap",
 
 TEMPLATE_TEST_CASE("heap works with randomized workloads", "[heap][workloads]",
                    (multiqueue::Heap<int, std::ranges::greater>),
-                   (QuickHeap<int>),
+                   (QuickHeap<int, std::ranges::less>),
                    (QuickHeapAVX2<std::int32_t>),
                    (QuickHeapAVX2NoEqual<std::int32_t>),
-                   (multiqueue::value_merge_heap<int, std::ranges::less>)) {
+                   (multiqueue::value_merge_heap<int, std::ranges::less>),
+                   (MergeHeapAVX2<std::int32_t>)) {
     using heap_t = TestType;
 
     auto heap = heap_t{};

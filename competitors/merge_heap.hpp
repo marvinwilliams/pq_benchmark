@@ -1,3 +1,5 @@
+#pragma once
+
 /**
 ******************************************************************************
 * @file:   merge_heap.hpp
@@ -7,9 +9,6 @@
 * @brief:
 *******************************************************************************
 **/
-#pragma once
-#ifndef SEQUENTIAL_HEAP_MERGE_HEAP_HPP_INCLUDED
-#define SEQUENTIAL_HEAP_MERGE_HEAP_HPP_INCLUDED
 
 #include <algorithm>
 #include <cassert>
@@ -472,14 +471,5 @@ template <typename T, typename Comparator = std::less<T>,
 using value_merge_heap =
     merge_heap<T, T, std::identity, Comparator, NodeSize, Allocator>;
 
-// template <typename Key, typename T, typename Comparator =
-// std::less<Key>, std::size_t NodeSize = 64,
-//           typename Allocator = std::allocator<std::pair<Key, T>>>
-// using key_value_merge_heap =
-//     merge_heap<std::pair<Key, T>, Key,
-//     util::get_nth<std::pair<Key, T>, 0>, Comparator, NodeSize,
-//     Allocator>;
-
 }  // namespace multiqueue
 
-#endif  //! SEQUENTIAL_HEAP_MERGE_HEAP_HPP_INCLUDED

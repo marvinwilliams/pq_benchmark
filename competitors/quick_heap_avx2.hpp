@@ -77,7 +77,7 @@ inline std::size_t num_greater_pivots(std::int32_t const *pivots, std::size_t n,
             __m256i const comb1 = _mm256_and_si256(cmp1, cmp2);
             __m256i const comb2 = _mm256_and_si256(cmp3, cmp4);
             __m256i const comb3 = _mm256_and_si256(comb1, comb2);
-            if (_mm256_testc_si256(comb3, ones)) {
+            if (_mm256_testc_si256(comb3, ones) == 1) {
                 count += 32;
             } else {
 #endif
