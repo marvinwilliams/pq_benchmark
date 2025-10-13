@@ -1,8 +1,9 @@
 #include "competitors/merge_heap.hpp"
+#include "competitors/merge_heap_avx2.hpp"
 #include "competitors/mq_heap.hpp"
 #include "competitors/quick_heap.hpp"
-// #include "competitors/quick_heap_avx2.hpp"
-#include "competitors/quick_heap_avx2_no_equal.hpp"
+#include "competitors/quick_heap_avx2.hpp"
+// #include "competitors/quick_heap_avx2_no_equal.hpp"
 
 #include <tlx/container/radix_heap.hpp>
 
@@ -26,6 +27,9 @@ using mq_pq = multiqueue::Heap<T, std::ranges::greater>;
 
 template <typename T>
 using merge_heap = multiqueue::value_merge_heap<T, std::ranges::less>;
+
+template <typename T>
+using merge_heap_avx2 = MergeHeapAVX2<T>;
 
 template <typename T>
 using boost_4_ary_heap =
@@ -56,7 +60,7 @@ template <typename T>
 using quick_heap = QuickHeap<T>;
 
 template <typename T>
-using quick_heap_avx2 = QuickHeapAVX2NoEqual<T>;
+using quick_heap_avx2 = QuickHeapAVX2<T>;
 
 template <typename T>
 std::vector<T> generate_data(std::size_t n, T min_val, T max_val) {
@@ -317,6 +321,7 @@ static constexpr int max_range = 1 << 22;
 RUN_BENCHMARKS(HeapSort, std_pq)
 // RUN_BENCHMARKS(HeapSort, mq_pq)
 RUN_BENCHMARKS(HeapSort, merge_heap)
+RUN_BENCHMARKS(HeapSort, merge_heap_avx2)
 RUN_BENCHMARKS(HeapSort, boost_4_ary_heap)
 RUN_BENCHMARKS(HeapSort, radix_heap)
 RUN_BENCHMARKS(HeapSort, quick_heap)
@@ -325,6 +330,7 @@ RUN_BENCHMARKS(HeapSort, quick_heap_avx2)
 RUN_BENCHMARKS(GrowShrinkMonotonic, std_pq)
 // RUN_BENCHMARKS(GrowShrinkMonotonic, mq_pq)
 RUN_BENCHMARKS(GrowShrinkMonotonic, merge_heap)
+RUN_BENCHMARKS(GrowShrinkMonotonic, merge_heap_avx2)
 RUN_BENCHMARKS(GrowShrinkMonotonic, boost_4_ary_heap)
 RUN_BENCHMARKS(GrowShrinkMonotonic, radix_heap)
 RUN_BENCHMARKS(GrowShrinkMonotonic, quick_heap)
@@ -333,6 +339,7 @@ RUN_BENCHMARKS(GrowShrinkMonotonic, quick_heap_avx2)
 RUN_BENCHMARKS(GrowShrinkRandom, std_pq)
 // RUN_BENCHMARKS(GrowShrinkRandom, mq_pq)
 RUN_BENCHMARKS(GrowShrinkRandom, merge_heap)
+RUN_BENCHMARKS(GrowShrinkRandom, merge_heap_avx2)
 RUN_BENCHMARKS(GrowShrinkRandom, boost_4_ary_heap)
 RUN_BENCHMARKS(GrowShrinkRandom, quick_heap)
 RUN_BENCHMARKS(GrowShrinkRandom, quick_heap_avx2)
@@ -340,6 +347,7 @@ RUN_BENCHMARKS(GrowShrinkRandom, quick_heap_avx2)
 RUN_BENCHMARKS(PushPopMonotonic, std_pq)
 // RUN_BENCHMARKS(PushPopMonotonic, mq_pq)
 RUN_BENCHMARKS(PushPopMonotonic, merge_heap)
+RUN_BENCHMARKS(PushPopMonotonic, merge_heap_avx2)
 RUN_BENCHMARKS(PushPopMonotonic, boost_4_ary_heap)
 RUN_BENCHMARKS(PushPopMonotonic, radix_heap)
 RUN_BENCHMARKS(PushPopMonotonic, quick_heap)
@@ -348,6 +356,7 @@ RUN_BENCHMARKS(PushPopMonotonic, quick_heap_avx2)
 RUN_BENCHMARKS(PushPopRandom, std_pq)
 // RUN_BENCHMARKS(PushPopRandom, mq_pq)
 RUN_BENCHMARKS(PushPopRandom, merge_heap)
+RUN_BENCHMARKS(PushPopRandom, merge_heap_avx2)
 RUN_BENCHMARKS(PushPopRandom, boost_4_ary_heap)
 RUN_BENCHMARKS(PushPopRandom, quick_heap)
 RUN_BENCHMARKS(PushPopRandom, quick_heap_avx2)

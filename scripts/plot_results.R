@@ -12,17 +12,24 @@ parsed_data <- results %>%
   filter(!str_detect(name, "_BigO$|_RMS$")) %>%
   extract(
     col = name, 
-    into = c("workload", "pq_type", "data_type", "size"), 
+    into = c("workload", "pq_type", "data_type", "size"),
     regex = pattern,
     remove = FALSE,
     convert = TRUE
     ) %>%
-  select(workload, pq_type, data_type, size, real_time)
+  mutate(
+         # detect if workload ends in "Small"
+    small = ifelse(str_detect(workload, "Small"), "Small", "Large"),
+    # remove "Small" from workload name
+    workload = str_replace(workload, "Small", "")
+    ) %>%
+  select(workload, small, pq_type, data_type, size, real_time)
 
 parsed_data$pq_type <- factor(parsed_data$pq_type, levels = c(
                                                               "std_pq",
                                                               "mq_pq",
                                                               "merge_heap",
+                                                              "merge_heap_avx2",
                                                               "radix_heap",
                                                               "quick_heap",
                                                               "quick_heap_avx2",
@@ -41,7 +48,7 @@ parsed_data$pq_type <- factor(parsed_data$pq_type, levels = c(
 plot <- ggplot(parsed_data, aes(x = size, y = real_time/size, color = pq_type, shape = pq_type)) +
   geom_line(alpha = 0.8) +
   geom_point(size = 2.5) +
-  facet_grid(rows = vars(data_type), cols = vars(workload), scales = "free_y") +
+  facet_grid(rows = vars(small), cols = vars(workload), scales = "free_y") +
   scale_x_log10(breaks = unique(parsed_data$size)) +
   scale_y_log10() +
   labs(
@@ -58,4 +65,4 @@ plot <- ggplot(parsed_data, aes(x = size, y = real_time/size, color = pq_type, s
     plot.title = element_text(face = "bold")
   )
 
-ggsave("plot.pdf", plot, width = 20, height = 7, dpi = 300)
+ggsave("plot.pdf", plot, width = 16, height = 8, dpi = 300)
