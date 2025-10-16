@@ -351,7 +351,7 @@ class merge_heap : private heap_base<T, Key, KeyExtractor, Comparator> {
     template <typename Iter>
     void extract_top_node(Iter output) {
         assert(!empty());
-        std::move(data_.front().begin(), data_.front.end(), output);
+        std::move(data_.front().begin(), data_.front().end(), output);
         pop_node();
     }
 
