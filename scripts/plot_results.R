@@ -42,7 +42,8 @@ parsed_data$pq_type <- factor(parsed_data$pq_type, levels = c(
                                                               "boost_8_ary_heap",
                                                               "boost_16_ary_heap",
                                                               "fib_heap",
-                                                              "pairing_heap"
+                                                              "pairing_heap",
+                                                              "s3q_queue"
                                                               ))
 
 plot <- ggplot(parsed_data, aes(x = size, y = real_time/size, color = pq_type, shape = pq_type)) +

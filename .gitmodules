@@ -1,0 +1,3 @@
+[submodule "competitors/s3q"]
+	path = competitors/s3q
+	url = https://github.com/raphinesse/s3q.git

@@ -4,6 +4,7 @@
 #include "competitors/quick_heap.hpp"
 #include "competitors/quick_heap_avx2.hpp"
 // #include "competitors/quick_heap_avx2_no_equal.hpp"
+#include "competitors/s3q/include/s3q/s3q.hpp"
 
 #include <tlx/container/radix_heap.hpp>
 
@@ -63,6 +64,23 @@ template <typename T>
 using quick_heap_avx2 = QuickHeapAVX2<T>;
 
 template <typename T>
+class s3q_queue {
+    struct S3QConfig : s3q::DefaultCfg {
+        using Item = T;
+    };
+
+   public:
+    using value_type = T;
+
+    void push(T item) { pq_.push(std::move(item)); }
+    T const& top() const { return pq_.top(); }
+    void pop() { pq_.pop(); }
+
+   private:
+    s3q::PriorityQueue<S3QConfig> pq_;
+};
+
+template <typename T>
 std::vector<T> generate_data(std::size_t n, T min_val, T max_val) {
     std::vector<T> data(n);
     std::mt19937 rng(42);
@@ -78,7 +96,7 @@ static void BM_HeapSort(benchmark::State& state) {
     auto data = generate_data<T>(static_cast<std::size_t>(n), 0, n);
     for (auto _ : state) {
         state.PauseTiming();
-        PQ pq;
+        auto pq = PQ();
         state.ResumeTiming();
 
         for (auto const& e : data) {
@@ -88,7 +106,6 @@ static void BM_HeapSort(benchmark::State& state) {
             pq.pop();
         }
     }
-    state.SetComplexityN(n);
 }
 
 template <typename PQ>
@@ -99,7 +116,7 @@ static void BM_HeapSortSmall(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        PQ pq;
+        auto pq = PQ();
         state.ResumeTiming();
 
         for (auto const& e : data) {
@@ -109,7 +126,6 @@ static void BM_HeapSortSmall(benchmark::State& state) {
             pq.pop();
         }
     }
-    state.SetComplexityN(n);
 }
 
 template <typename PQ, typename T = typename PQ::value_type>
@@ -119,7 +135,7 @@ static void BM_GrowShrinkMonotonic(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        PQ pq;
+        auto pq = PQ();
         T last = 0;
         state.ResumeTiming();
 
@@ -136,7 +152,6 @@ static void BM_GrowShrinkMonotonic(benchmark::State& state) {
             pq.pop();
         }
     }
-    state.SetComplexityN(n);
 }
 
 template <typename PQ, typename T = typename PQ::value_type>
@@ -146,7 +161,7 @@ static void BM_GrowShrinkMonotonicSmall(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        PQ pq;
+        auto pq = PQ();
         T last = 0;
         state.ResumeTiming();
 
@@ -163,7 +178,6 @@ static void BM_GrowShrinkMonotonicSmall(benchmark::State& state) {
             pq.pop();
         }
     }
-    state.SetComplexityN(n);
 }
 
 template <typename PQ, typename T = typename PQ::value_type>
@@ -173,7 +187,7 @@ static void BM_GrowShrinkRandom(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        PQ pq;
+        auto pq = PQ();
         state.ResumeTiming();
 
         for (int i = 0; i < n; ++i) {
@@ -187,7 +201,6 @@ static void BM_GrowShrinkRandom(benchmark::State& state) {
             pq.pop();
         }
     }
-    state.SetComplexityN(n);
 }
 
 template <typename PQ, typename T = typename PQ::value_type>
@@ -197,7 +210,7 @@ static void BM_GrowShrinkRandomSmall(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        PQ pq;
+        auto pq = PQ();
         state.ResumeTiming();
 
         for (int i = 0; i < n; ++i) {
@@ -211,29 +224,31 @@ static void BM_GrowShrinkRandomSmall(benchmark::State& state) {
             pq.pop();
         }
     }
-    state.SetComplexityN(n);
 }
 
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_PushPopMonotonic(benchmark::State& state) {
     int n = static_cast<int>(state.range(0));
-    auto data = generate_data(static_cast<std::size_t>(2 * n), 0, n);
+    auto data = generate_data(static_cast<std::size_t>(10 * n), 0ll,
+                              n * (1ll << (8 * (sizeof(T) - 4))));
 
     for (auto _ : state) {
         state.PauseTiming();
-        PQ pq;
-        for (int i = 0; i < n; ++i) {
+        auto pq = PQ();
+        for (int i = 0; i < 2*n; i+=2) {
             pq.push(data[static_cast<std::size_t>(i)]);
+            // pq.push(data[static_cast<std::size_t>(i+1)]);
+            // pq.pop();
         }
         state.ResumeTiming();
 
-        for (int i = n; i < 2 * n; ++i) {
+        for (int i = 2*n; i < 10 * n; ++i) {
             auto last = pq.top();
             pq.pop();
             pq.push(last + data[static_cast<std::size_t>(i)]);
         }
     }
-    state.SetComplexityN(n);
+    state.SetItemsProcessed(state.iterations() * 8*n);
 }
 
 template <typename PQ, typename T = typename PQ::value_type>
@@ -243,7 +258,7 @@ static void BM_PushPopMonotonicSmall(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        PQ pq;
+        auto pq = PQ();
         for (int i = 0; i < n; ++i) {
             pq.push(data[static_cast<std::size_t>(i)]);
         }
@@ -255,7 +270,6 @@ static void BM_PushPopMonotonicSmall(benchmark::State& state) {
             pq.push(last + data[static_cast<std::size_t>(i)]);
         }
     }
-    state.SetComplexityN(n);
 }
 
 template <typename PQ, typename T = typename PQ::value_type>
@@ -265,7 +279,7 @@ static void BM_PushPopRandom(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        PQ pq;
+        auto pq = PQ();
         for (int i = 0; i < n; ++i) {
             pq.push(data[static_cast<std::size_t>(i)]);
         }
@@ -276,7 +290,6 @@ static void BM_PushPopRandom(benchmark::State& state) {
             pq.push(data[static_cast<std::size_t>(i)]);
         }
     }
-    state.SetComplexityN(n);
 }
 
 template <typename PQ, typename T = typename PQ::value_type>
@@ -286,7 +299,7 @@ static void BM_PushPopRandomSmall(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        PQ pq;
+        auto pq = PQ();
         for (int i = 0; i < n; ++i) {
             pq.push(data[static_cast<std::size_t>(i)]);
         }
@@ -297,7 +310,6 @@ static void BM_PushPopRandomSmall(benchmark::State& state) {
             pq.push(data[static_cast<std::size_t>(i)]);
         }
     }
-    state.SetComplexityN(n);
 }
 
 static constexpr int min_range = 1 << 10;
@@ -309,56 +321,56 @@ static constexpr int max_range = 1 << 22;
         ->Complexity(benchmark::oNLogN);                   \
     BENCHMARK_TEMPLATE(BM_##NAME##Small, PQ<std::int32_t>) \
         ->Range(min_range, max_range)                      \
-        ->Complexity(benchmark::oNLogN); /*                \
+        ->Complexity(benchmark::oNLogN);                   \
     BENCHMARK_TEMPLATE(BM_##NAME, PQ<std::int64_t>)        \
         ->Range(min_range, max_range)                      \
         ->Complexity(benchmark::oNLogN);                   \
     BENCHMARK_TEMPLATE(BM_##NAME##Small, PQ<std::int64_t>) \
         ->Range(min_range, max_range)                      \
-        ->Complexity(benchmark::oNLogN);                   \
-*/
+        ->Complexity(benchmark::oNLogN);
 
 RUN_BENCHMARKS(HeapSort, std_pq)
 // RUN_BENCHMARKS(HeapSort, mq_pq)
 RUN_BENCHMARKS(HeapSort, merge_heap)
-RUN_BENCHMARKS(HeapSort, merge_heap_avx2)
+// RUN_BENCHMARKS(HeapSort, merge_heap_avx2)
 RUN_BENCHMARKS(HeapSort, boost_4_ary_heap)
 RUN_BENCHMARKS(HeapSort, radix_heap)
 RUN_BENCHMARKS(HeapSort, quick_heap)
-RUN_BENCHMARKS(HeapSort, quick_heap_avx2)
+// RUN_BENCHMARKS(HeapSort, quick_heap_avx2)
 
 RUN_BENCHMARKS(GrowShrinkMonotonic, std_pq)
 // RUN_BENCHMARKS(GrowShrinkMonotonic, mq_pq)
 RUN_BENCHMARKS(GrowShrinkMonotonic, merge_heap)
-RUN_BENCHMARKS(GrowShrinkMonotonic, merge_heap_avx2)
+// RUN_BENCHMARKS(GrowShrinkMonotonic, merge_heap_avx2)
 RUN_BENCHMARKS(GrowShrinkMonotonic, boost_4_ary_heap)
 RUN_BENCHMARKS(GrowShrinkMonotonic, radix_heap)
 RUN_BENCHMARKS(GrowShrinkMonotonic, quick_heap)
-RUN_BENCHMARKS(GrowShrinkMonotonic, quick_heap_avx2)
+// RUN_BENCHMARKS(GrowShrinkMonotonic, quick_heap_avx2)
 
 RUN_BENCHMARKS(GrowShrinkRandom, std_pq)
 // RUN_BENCHMARKS(GrowShrinkRandom, mq_pq)
 RUN_BENCHMARKS(GrowShrinkRandom, merge_heap)
-RUN_BENCHMARKS(GrowShrinkRandom, merge_heap_avx2)
+// RUN_BENCHMARKS(GrowShrinkRandom, merge_heap_avx2)
 RUN_BENCHMARKS(GrowShrinkRandom, boost_4_ary_heap)
 RUN_BENCHMARKS(GrowShrinkRandom, quick_heap)
-RUN_BENCHMARKS(GrowShrinkRandom, quick_heap_avx2)
+// RUN_BENCHMARKS(GrowShrinkRandom, quick_heap_avx2)
 
 RUN_BENCHMARKS(PushPopMonotonic, std_pq)
 // RUN_BENCHMARKS(PushPopMonotonic, mq_pq)
 RUN_BENCHMARKS(PushPopMonotonic, merge_heap)
-RUN_BENCHMARKS(PushPopMonotonic, merge_heap_avx2)
+// RUN_BENCHMARKS(PushPopMonotonic, merge_heap_avx2)
 RUN_BENCHMARKS(PushPopMonotonic, boost_4_ary_heap)
 RUN_BENCHMARKS(PushPopMonotonic, radix_heap)
 RUN_BENCHMARKS(PushPopMonotonic, quick_heap)
-RUN_BENCHMARKS(PushPopMonotonic, quick_heap_avx2)
+// RUN_BENCHMARKS(PushPopMonotonic, quick_heap_avx2)
+RUN_BENCHMARKS(PushPopMonotonic, s3q_queue)
 
 RUN_BENCHMARKS(PushPopRandom, std_pq)
 // RUN_BENCHMARKS(PushPopRandom, mq_pq)
 RUN_BENCHMARKS(PushPopRandom, merge_heap)
-RUN_BENCHMARKS(PushPopRandom, merge_heap_avx2)
+// RUN_BENCHMARKS(PushPopRandom, merge_heap_avx2)
 RUN_BENCHMARKS(PushPopRandom, boost_4_ary_heap)
 RUN_BENCHMARKS(PushPopRandom, quick_heap)
-RUN_BENCHMARKS(PushPopRandom, quick_heap_avx2)
+// RUN_BENCHMARKS(PushPopRandom, quick_heap_avx2)
 
 BENCHMARK_MAIN();
