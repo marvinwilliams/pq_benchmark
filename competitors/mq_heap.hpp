@@ -1,3 +1,5 @@
+#pragma once
+
 /**
 ******************************************************************************
 * @file:   heap.hpp
@@ -7,17 +9,15 @@
 * @brief:
 *******************************************************************************
 **/
-#pragma once
 
 #include <cassert>
-#include <cstddef>
 #include <functional>
 #include <utility>
 #include <vector>
 
 namespace multiqueue {
 
-template <typename T, typename Compare = std::less<>, unsigned int arity = 8, typename Container = std::vector<T>>
+template <typename T, typename Compare = std::less<>, unsigned int arity = 16, typename Container = std::vector<T>>
 class Heap {
     static_assert(arity >= 2, "Arity must be at least two");
 

@@ -11,22 +11,8 @@
       "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_CXX_FLAGS": "-march=native",
         "WARNING_FLAGS": "-Wall;-Wextra;-Wpedantic;-Wconversion;-Wsign-conversion;-Wshadow;-Wduplicated-branches;-Wduplicated-cond;-Wlogical-op;-Wnull-dereference;-Wuseless-cast;-Wdouble-promotion;-Wold-style-cast;-Wformat=2;-Wundef;-Wcast-align;-Wcast-qual;-Wdisabled-optimization;-Wredundant-decls;-Wunsafe-loop-optimizations;-Wnoexcept;-Wsuggest-final-types;-Wsuggest-final-methods;-Wsuggest-override"
-      }
-    },
-    {
-      "name": "multi",
-      "displayName": "Multi-Configuration Preset",
-      "inherits": "gcc",
-      "generator": "Ninja Multi-Config",
-      "binaryDir": "build/multi",
-      "cacheVariables": {
-        "CMAKE_CONFIGURATION_TYPES": "Devel;Release;Debug;UBSan;ASan",
-        "CMAKE_CXX_FLAGS_DEVEL": "-O2 -g -fno-omit-frame-pointer -march=native",
-        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG -march=native",
-        "CMAKE_CXX_FLAGS_DEBUG": "-Og -ggdb",
-        "CMAKE_CXX_FLAGS_UBSAN": "-O2 -g -fno-omit-frame-pointer -march=native -fsanitize=undefined",
-        "CMAKE_CXX_FLAGS_ASAN": "-O2 -g -fno-omit-frame-pointer -march=native -fsanitize=address"
       }
     },
     {
@@ -36,7 +22,7 @@
       "binaryDir": "build/devel",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Devel",
-        "CMAKE_CXX_FLAGS_DEVEL": "-O2 -g -fno-omit-frame-pointer -march=native"
+        "CMAKE_CXX_FLAGS_DEVEL": "-O2 -g -fno-omit-frame-pointer"
       },
       "warnings": {
         "dev": true,
@@ -51,7 +37,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON",
-        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG -march=native"
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG"
       }
     },
     {
@@ -61,7 +47,7 @@
       "binaryDir": "build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_FLAGS_DEBUG": "-Og -ggdb -march=native"
+        "CMAKE_CXX_FLAGS_DEBUG": "-Og -ggdb"
       }
     },
     {
@@ -71,7 +57,7 @@
       "binaryDir": "build/ubsan",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "UBSan",
-        "CMAKE_CXX_FLAGS_UBSAN": "-O2 -g -fno-omit-frame-pointer -march=native -fsanitize=undefined"
+        "CMAKE_CXX_FLAGS_UBSAN": "-O2 -g -fno-omit-frame-pointer -fsanitize=undefined"
       }
     },
     {
@@ -81,16 +67,11 @@
       "binaryDir": "build/asan",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "ASan",
-        "CMAKE_CXX_FLAGS_ASAN": "-O2 -g -fno-omit-frame-pointer -march=native -fsanitize=address"
+        "CMAKE_CXX_FLAGS_ASAN": "-O2 -g -fno-omit-frame-pointer -fsanitize=address"
       }
     }
   ],
   "buildPresets": [
-    {
-      "name": "multi",
-      "displayName": "Multi-Configuration Preset",
-      "configurePreset": "multi"
-    },
     {
       "name": "devel",
       "displayName": "Development Preset",

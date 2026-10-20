@@ -95,8 +95,6 @@ void inplace_merge(InputIt input, InOutIt in_out, OutputIt output,
         }
         --n;
     }
-    // Merge into in_out until only elements from in_out remain (those don't
-    // need to be moved)
     if (input != input_end && in_out != in_out_end) {
         while (true) {
             if (comp(*input, *in_out)) {
@@ -170,8 +168,6 @@ class merge_heap : private heap_base<T, Key, KeyExtractor, Comparator> {
         return value_compare(data_[lhs_index].back(), data_[rhs_index].back());
     }
 
-    // Find the index of the smallest `num_children` children of the node at
-    // index `index`
     size_type min_child_index(size_type index) const
         noexcept(noexcept(compare_last(0, 0))) {
         assert(index < data_.size());
@@ -295,9 +291,8 @@ class merge_heap : private heap_base<T, Key, KeyExtractor, Comparator> {
     inline void reserve_and_touch(std::size_t const cap) {
         auto const num_nodes = cap / NodeSize + (cap % NodeSize == 0 ? 0 : 1);
         if (data_.size() < num_nodes) {
-            size_type const old_size = size();
+            auto const old_size = data_.size();
             data_.resize(num_nodes);
-            // this does not free allocated memory
             data_.resize(old_size);
         }
     }
@@ -356,7 +351,8 @@ class merge_heap : private heap_base<T, Key, KeyExtractor, Comparator> {
     }
 
     void push(value_type const &value) {
-        if ((data_.empty() || value_compare(value, data_.front().front()))) {
+        if ((data_.empty() || value_compare(value, data_.front().front())) &&
+            (push_buffer_size_ == 0 || value_compare(value, *(push_buffer_.end() - push_buffer_size_)))) {
             if (pop_buffer_size_ == 0) {
                 pop_buffer_.back() = value;
                 ++pop_buffer_size_;
@@ -472,4 +468,3 @@ using value_merge_heap =
     merge_heap<T, T, std::identity, Comparator, NodeSize, Allocator>;
 
 }  // namespace multiqueue
-

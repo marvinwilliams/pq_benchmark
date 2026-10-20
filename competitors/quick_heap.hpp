@@ -1,13 +1,8 @@
 #pragma once
 
-#include <immintrin.h>
-
 #include <algorithm>
 #include <cassert>
-#include <concepts>
-#include <cstdint>
 #include <functional>
-#include <limits>
 #include <vector>
 
 namespace quick_heap_detail {

@@ -1,3 +1,5 @@
+#pragma once
+
 /**
 ******************************************************************************
 * @file:   merge_heap.hpp
@@ -7,13 +9,16 @@
 * @brief:
 *******************************************************************************
 **/
-#pragma once
-#include <immintrin.h>
-#include <cstdint>
-#include <limits>
 
+#ifndef __AVX2__
+#error "merge_heap_simd.hpp requires AVX2 (e.g. -march=native)"
+#endif
+
+#include <immintrin.h>
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
+#include <limits>
 #include <memory>       // allocator
 #include <type_traits>  // is_constructible, enable_if
 #include <utility>      // move, forward
@@ -210,7 +215,7 @@ class MergeHeapAVX2 {
     inline void reserve_and_touch(std::size_t const cap) {
         auto const num_nodes = cap / NodeSize + (cap % NodeSize == 0 ? 0 : 1);
         if (data_.size() < num_nodes) {
-            size_type const old_size = size();
+            auto const old_size = data_.size();
             data_.resize(num_nodes);
             // this does not free allocated memory
             data_.resize(old_size);
@@ -261,7 +266,8 @@ class MergeHeapAVX2 {
     void push(value_type const &value) {
         if (pop_buffer_size_ == 0 || value <= pop_buffer_.back() ||
             (pop_buffer_size_ < 8 &&
-             (data_.empty() || value <= data_.front().back()))) {
+             (data_.empty() || value <= data_.front().front()) &&
+             (push_buffer_size_ == 0 || value <= push_buffer_.front()))) {
             unsigned const valid_mask =
                 (1u << (8u - static_cast<unsigned>(pop_buffer_size_))) - 1u;
             __m256i const value_vec = _mm256_set1_epi32(value);

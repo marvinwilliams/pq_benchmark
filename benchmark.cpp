@@ -1,9 +1,12 @@
 #include "competitors/merge_heap.hpp"
-#include "competitors/merge_heap_avx2.hpp"
+#include "competitors/merge_heap_simd.hpp"
 #include "competitors/mq_heap.hpp"
 #include "competitors/quick_heap.hpp"
-#include "competitors/quick_heap_avx2.hpp"
-// #include "competitors/quick_heap_avx2_no_equal.hpp"
+#include "competitors/quick_heap_rust_port.hpp"
+#include "competitors/quick_heap_simd.hpp"
+#ifdef WITH_RUST_QUICKHEAP
+#include "competitors/quick_heap_rust_wrapper.hpp"
+#endif
 #include "competitors/s3q/include/s3q/s3q.hpp"
 
 #include <tlx/container/radix_heap.hpp>
@@ -27,12 +30,6 @@ template <typename T>
 using mq_pq = multiqueue::Heap<T, std::ranges::greater>;
 
 template <typename T>
-using merge_heap = multiqueue::value_merge_heap<T, std::ranges::less>;
-
-template <typename T>
-using merge_heap_avx2 = MergeHeapAVX2<T>;
-
-template <typename T>
 using boost_4_ary_heap =
     boost::heap::d_ary_heap<T, boost::heap::arity<4>,
                             boost::heap::compare<std::ranges::greater>>;
@@ -45,6 +42,12 @@ template <typename T>
 using boost_16_ary_heap =
     boost::heap::d_ary_heap<T, boost::heap::arity<16>,
                             boost::heap::compare<std::ranges::greater>>;
+
+template <typename T>
+using merge_heap = multiqueue::value_merge_heap<T, std::ranges::less>;
+
+template <typename T>
+using merge_heap_avx2 = MergeHeapAVX2<T>;
 
 template <typename T>
 using fib_heap =
@@ -62,6 +65,19 @@ using quick_heap = QuickHeap<T>;
 
 template <typename T>
 using quick_heap_avx2 = QuickHeapAVX2<T>;
+
+#ifdef __AVX512F__
+template <typename T>
+using quick_heap_avx512 = QuickHeapAVX512<T>;
+#endif
+
+template <typename T>
+using quick_heap_rs = QuickHeapRs<T>;
+
+#ifdef WITH_RUST_QUICKHEAP
+template <typename T>
+using rust_quick_heap = RustQuickHeap<T>;
+#endif
 
 template <typename T>
 class s3q_queue {
@@ -229,32 +245,30 @@ static void BM_GrowShrinkRandomSmall(benchmark::State& state) {
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_PushPopMonotonic(benchmark::State& state) {
     int n = static_cast<int>(state.range(0));
-    auto data = generate_data(static_cast<std::size_t>(10 * n), 0ll,
-                              n * (1ll << (8 * (sizeof(T) - 4))));
+    auto data = generate_data<T>(static_cast<std::size_t>(10 * n), T{0},
+                                 static_cast<T>(n) << (8 * (sizeof(T) - 4)));
 
     for (auto _ : state) {
         state.PauseTiming();
         auto pq = PQ();
-        for (int i = 0; i < 2*n; i+=2) {
+        for (int i = 0; i < 2 * n; i += 2) {
             pq.push(data[static_cast<std::size_t>(i)]);
-            // pq.push(data[static_cast<std::size_t>(i+1)]);
-            // pq.pop();
         }
         state.ResumeTiming();
 
-        for (int i = 2*n; i < 10 * n; ++i) {
+        for (int i = 2 * n; i < 10 * n; ++i) {
             auto last = pq.top();
             pq.pop();
             pq.push(last + data[static_cast<std::size_t>(i)]);
         }
     }
-    state.SetItemsProcessed(state.iterations() * 8*n);
+    state.SetItemsProcessed(state.iterations() * 8 * n);
 }
 
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_PushPopMonotonicSmall(benchmark::State& state) {
     int n = static_cast<int>(state.range(0));
-    auto data = generate_data(static_cast<std::size_t>(2 * n), 0, n);
+    auto data = generate_data(static_cast<std::size_t>(2 * n), 0, 1000);
 
     for (auto _ : state) {
         state.PauseTiming();
@@ -295,7 +309,7 @@ static void BM_PushPopRandom(benchmark::State& state) {
 template <typename PQ, typename T = typename PQ::value_type>
 static void BM_PushPopRandomSmall(benchmark::State& state) {
     int n = static_cast<int>(state.range(0));
-    auto data = generate_data(static_cast<std::size_t>(2 * n), 0, n);
+    auto data = generate_data(static_cast<std::size_t>(2 * n), 0, 1000);
 
     for (auto _ : state) {
         state.PauseTiming();
@@ -315,62 +329,64 @@ static void BM_PushPopRandomSmall(benchmark::State& state) {
 static constexpr int min_range = 1 << 10;
 static constexpr int max_range = 1 << 22;
 
-#define RUN_BENCHMARKS(NAME, PQ)                           \
-    BENCHMARK_TEMPLATE(BM_##NAME, PQ<std::int32_t>)        \
-        ->Range(min_range, max_range)                      \
-        ->Complexity(benchmark::oNLogN);                   \
-    BENCHMARK_TEMPLATE(BM_##NAME##Small, PQ<std::int32_t>) \
-        ->Range(min_range, max_range)                      \
-        ->Complexity(benchmark::oNLogN);                   \
-    BENCHMARK_TEMPLATE(BM_##NAME, PQ<std::int64_t>)        \
-        ->Range(min_range, max_range)                      \
-        ->Complexity(benchmark::oNLogN);                   \
-    BENCHMARK_TEMPLATE(BM_##NAME##Small, PQ<std::int64_t>) \
-        ->Range(min_range, max_range)                      \
+#define REGISTER(NAME, PQ, T)                   \
+    BENCHMARK_TEMPLATE(BM_##NAME, PQ<T>)        \
+        ->Range(min_range, max_range)           \
+        ->Complexity(benchmark::oNLogN);        \
+    BENCHMARK_TEMPLATE(BM_##NAME##Small, PQ<T>) \
+        ->Range(min_range, max_range)           \
         ->Complexity(benchmark::oNLogN);
 
-RUN_BENCHMARKS(HeapSort, std_pq)
-// RUN_BENCHMARKS(HeapSort, mq_pq)
-RUN_BENCHMARKS(HeapSort, merge_heap)
-// RUN_BENCHMARKS(HeapSort, merge_heap_avx2)
-RUN_BENCHMARKS(HeapSort, boost_4_ary_heap)
-RUN_BENCHMARKS(HeapSort, radix_heap)
-RUN_BENCHMARKS(HeapSort, quick_heap)
-// RUN_BENCHMARKS(HeapSort, quick_heap_avx2)
+#define RUN_BENCHMARKS(NAME, PQ)     \
+    REGISTER(NAME, PQ, std::int32_t) \
+    REGISTER(NAME, PQ, std::int64_t)
 
-RUN_BENCHMARKS(GrowShrinkMonotonic, std_pq)
-// RUN_BENCHMARKS(GrowShrinkMonotonic, mq_pq)
-RUN_BENCHMARKS(GrowShrinkMonotonic, merge_heap)
-// RUN_BENCHMARKS(GrowShrinkMonotonic, merge_heap_avx2)
-RUN_BENCHMARKS(GrowShrinkMonotonic, boost_4_ary_heap)
-RUN_BENCHMARKS(GrowShrinkMonotonic, radix_heap)
-RUN_BENCHMARKS(GrowShrinkMonotonic, quick_heap)
-// RUN_BENCHMARKS(GrowShrinkMonotonic, quick_heap_avx2)
+#define RUN_BENCHMARKS_32(NAME, PQ) REGISTER(NAME, PQ, std::int32_t)
 
-RUN_BENCHMARKS(GrowShrinkRandom, std_pq)
-// RUN_BENCHMARKS(GrowShrinkRandom, mq_pq)
-RUN_BENCHMARKS(GrowShrinkRandom, merge_heap)
-// RUN_BENCHMARKS(GrowShrinkRandom, merge_heap_avx2)
-RUN_BENCHMARKS(GrowShrinkRandom, boost_4_ary_heap)
-RUN_BENCHMARKS(GrowShrinkRandom, quick_heap)
-// RUN_BENCHMARKS(GrowShrinkRandom, quick_heap_avx2)
+#ifdef __AVX512F__
+#define AVX512_HEAPS(X, NAME) X(NAME, quick_heap_avx512)
+#else
+#define AVX512_HEAPS(X, NAME)
+#endif
 
-RUN_BENCHMARKS(PushPopMonotonic, std_pq)
-// RUN_BENCHMARKS(PushPopMonotonic, mq_pq)
-RUN_BENCHMARKS(PushPopMonotonic, merge_heap)
-// RUN_BENCHMARKS(PushPopMonotonic, merge_heap_avx2)
-RUN_BENCHMARKS(PushPopMonotonic, boost_4_ary_heap)
-RUN_BENCHMARKS(PushPopMonotonic, radix_heap)
-RUN_BENCHMARKS(PushPopMonotonic, quick_heap)
-// RUN_BENCHMARKS(PushPopMonotonic, quick_heap_avx2)
-RUN_BENCHMARKS(PushPopMonotonic, s3q_queue)
+#ifdef WITH_RUST_QUICKHEAP
+#define RUST_HEAPS(X, NAME) X(NAME, rust_quick_heap)
+#else
+#define RUST_HEAPS(X, NAME)
+#endif
 
-RUN_BENCHMARKS(PushPopRandom, std_pq)
-// RUN_BENCHMARKS(PushPopRandom, mq_pq)
-RUN_BENCHMARKS(PushPopRandom, merge_heap)
-// RUN_BENCHMARKS(PushPopRandom, merge_heap_avx2)
-RUN_BENCHMARKS(PushPopRandom, boost_4_ary_heap)
-RUN_BENCHMARKS(PushPopRandom, quick_heap)
-// RUN_BENCHMARKS(PushPopRandom, quick_heap_avx2)
+#define GENERAL_HEAPS(X, NAME) \
+    X(NAME, std_pq)            \
+    X(NAME, mq_pq)             \
+    X(NAME, boost_4_ary_heap)  \
+    X(NAME, boost_8_ary_heap)  \
+    X(NAME, boost_16_ary_heap) \
+    X(NAME, fib_heap)          \
+    X(NAME, pairing_heap)      \
+    X(NAME, merge_heap)        \
+    X(NAME, s3q_queue)         \
+    X(NAME, quick_heap)        \
+    X(NAME, quick_heap_rs)     \
+    X(NAME, quick_heap_avx2)   \
+    AVX512_HEAPS(X, NAME)      \
+    RUST_HEAPS(X, NAME)
+
+#define GENERAL_HEAPS_32(X, NAME) X(NAME, merge_heap_avx2)
+
+#define MONOTONE_HEAPS(X, NAME) X(NAME, radix_heap)
+
+#define RUN_GENERAL(NAME)               \
+    GENERAL_HEAPS(RUN_BENCHMARKS, NAME) \
+    GENERAL_HEAPS_32(RUN_BENCHMARKS_32, NAME)
+
+#define RUN_MONOTONE(NAME) \
+    RUN_GENERAL(NAME)      \
+    MONOTONE_HEAPS(RUN_BENCHMARKS, NAME)
+
+RUN_MONOTONE(HeapSort)
+RUN_MONOTONE(GrowShrinkMonotonic)
+RUN_GENERAL(GrowShrinkRandom)
+RUN_MONOTONE(PushPopMonotonic)
+RUN_GENERAL(PushPopRandom)
 
 BENCHMARK_MAIN();
