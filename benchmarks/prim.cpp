@@ -12,13 +12,18 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 using key_type = std::int64_t;
-static constexpr key_type id_mask = (key_type{1} << 32) - 1;
+static constexpr unsigned id_bits = 32;
+static constexpr key_type id_mask = (key_type{1} << id_bits) - 1;
+static constexpr Graph::weight_type max_weight =
+    std::numeric_limits<key_type>::max() >> id_bits;
 
 struct Result {
     long long time_ns = 0;
@@ -35,30 +40,34 @@ Result prim(Graph const& graph, std::size_t source, Papi& papi) {
     std::size_t size = 0;
     papi.start();
     auto t_start = std::chrono::steady_clock::now();
+    for (std::size_t i = graph.nodes[source]; i < graph.nodes[source + 1];
+         ++i) {
+        auto const& e = graph.edges[i];
+        if (e.target != source) {
+            pq.push((e.weight << id_bits) | static_cast<key_type>(e.target));
+            ++size;
+        }
+    }
     visited[source] = 1;
-    pq.push(static_cast<key_type>(source));
-    ++size;
     while (size != 0) {
         key_type const key = pq.top();
         pq.pop();
         --size;
-        auto const distance = key >> 32;
-        auto const& edge = graph.edges[static_cast<std::size_t>(key & id_mask)];
-        if (visited[edge.target] == 1) {
+        auto const node = static_cast<std::size_t>(key & id_mask);
+        if (visited[node] == 1) {
             ++result.ignored_nodes;
             continue;
         }
-        result.mst_weight += edge.weight;
-        for (std::size_t i = graph.nodes[edge.target];
-             i < graph.nodes[edge.target + 1]; ++i) {
-            auto const d = distance + graph.edges[i].weight;
-            auto const target = graph.edges[i].target;
+        result.mst_weight += key >> id_bits;
+        visited[node] = 1;
+        for (std::size_t i = graph.nodes[node]; i < graph.nodes[node + 1];
+             ++i) {
+            auto const& [target, weight] = graph.edges[i];
             if (visited[target] == 0) {
-                pq.push((d << 32) | static_cast<key_type>(target));
+                pq.push((weight << id_bits) | static_cast<key_type>(target));
                 ++size;
             }
         }
-        visited[edge.target] = 1;
         ++result.processed_nodes;
     }
     auto t_end = std::chrono::steady_clock::now();
@@ -123,6 +132,17 @@ int main(int argc, char* argv[]) {
         std::cerr << "Error: --source " << source_spec << ": " << e.what()
                   << '\n';
         return EXIT_FAILURE;
+    }
+    if (graph.num_nodes() > static_cast<std::size_t>(id_mask) + 1) {
+        std::cerr << "Error: more than " << id_mask + 1 << " nodes\n";
+        return EXIT_FAILURE;
+    }
+    for (auto const& e : graph.edges) {
+        if (e.weight < 0 || e.weight > max_weight) {
+            std::cerr << "Error: edge weight " << e.weight
+                      << " is not in [0, " << max_weight << "]\n";
+            return EXIT_FAILURE;
+        }
     }
     std::clog << "Graph has " << graph.num_nodes() << " nodes and "
               << graph.num_edges() << " edges, source " << source
