@@ -5,6 +5,7 @@ project(
   VERSION 0.1
   LANGUAGES CXX)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(FetchContent)
 
 option(BUILD_TESTS "Build tests" ON)
@@ -69,30 +70,9 @@ if(BUILD_BENCHMARKS)
   # Before s3q, which would otherwise populate its own tlx without adding it.
   FetchContent_MakeAvailable(tlx)
   add_subdirectory(competitors/s3q)
-  add_executable(pq_benchmark benchmark.cpp)
-  target_compile_features(pq_benchmark PRIVATE cxx_std_23)
-  target_include_directories(pq_benchmark PRIVATE .)
-
   set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
   set(BENCHMARK_ENABLE_LIBPFM ON)
   FetchContent_MakeAvailable(google-benchmark)
-  target_link_libraries(pq_benchmark PRIVATE pq_warnings benchmark::benchmark tlx
-                                             Boost::boost s3q)
-  if(WITH_RUST_QUICKHEAP)
-    target_link_libraries(pq_benchmark PRIVATE rust_quickheap)
-  endif()
-
-  add_executable(dijkstra dijkstra.cpp)
-  target_compile_features(dijkstra PRIVATE cxx_std_23)
-  target_include_directories(dijkstra PRIVATE .)
-  target_link_libraries(dijkstra PRIVATE pq_warnings tlx Boost::boost s3q)
-  find_library(PFM_LIBRARY pfm)
-  find_path(PFM_INCLUDE_DIR perfmon/pfmlib_perf_event.h)
-  if(PFM_LIBRARY AND PFM_INCLUDE_DIR)
-    target_compile_definitions(dijkstra PRIVATE HAVE_LIBPFM)
-    target_include_directories(dijkstra SYSTEM PRIVATE ${PFM_INCLUDE_DIR})
-    target_link_libraries(dijkstra PRIVATE ${PFM_LIBRARY})
-  else()
-    message(WARNING "libpfm not found, dijkstra cannot count perf events")
-  endif()
+  find_package(PAPI)
+  add_subdirectory(benchmarks)
 endif()

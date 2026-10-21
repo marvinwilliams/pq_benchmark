@@ -1,0 +1,22 @@
+add_library(benchmark_base INTERFACE)
+target_compile_features(benchmark_base INTERFACE cxx_std_23)
+target_include_directories(benchmark_base INTERFACE ${CMAKE_SOURCE_DIR})
+target_link_libraries(benchmark_base INTERFACE pq_warnings tlx Boost::boost s3q)
+if(WITH_RUST_QUICKHEAP)
+  target_link_libraries(benchmark_base INTERFACE rust_quickheap)
+endif()
+if(PAPI_FOUND)
+  target_link_libraries(benchmark_base INTERFACE PAPI::PAPI)
+  target_compile_definitions(benchmark_base INTERFACE WITH_PAPI)
+else()
+  message(STATUS "PAPI not found, performance counters not available")
+endif()
+
+add_executable(workloads workloads.cpp)
+target_link_libraries(workloads PRIVATE benchmark_base benchmark::benchmark)
+
+add_executable(dijkstra dijkstra.cpp)
+target_link_libraries(dijkstra PRIVATE benchmark_base)
+
+add_executable(knapsack knapsack.cpp)
+target_link_libraries(knapsack PRIVATE benchmark_base)
