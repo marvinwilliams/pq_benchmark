@@ -58,6 +58,7 @@ Result prim(Graph const& graph, std::size_t source, Papi& papi) {
                 ++size;
             }
         }
+        visited[edge.target] = 1;
         ++result.processed_nodes;
     }
     auto t_end = std::chrono::steady_clock::now();
@@ -139,7 +140,6 @@ int main(int argc, char* argv[]) {
     auto result = prim<BENCH_PQ<key_type>>(graph, source, *papi);
     std::clog << "Done\n\n";
 
-    auto const pops = result.processed_nodes + result.ignored_nodes;
     std::clog << "= Results =\n";
     std::clog << "Time (s): " << std::fixed << std::setprecision(3)
               << static_cast<double>(result.time_ns) * 1e-9 << '\n';

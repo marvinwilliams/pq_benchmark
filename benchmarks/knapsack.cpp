@@ -17,19 +17,18 @@
 #include <utility>
 #include <vector>
 
-using data_type = std::int64_t;
+using key_type = std::int64_t;
 
 struct Node {
-    data_type upper_bound;
+    key_type upper_bound;
     std::size_t index;
-    data_type free_capacity;
-    data_type value;
+    key_type free_capacity;
+    key_type value;
 };
 
-using key_type = std::int64_t;
 constexpr unsigned slot_bits = 31;
 constexpr key_type slot_mask = (key_type{1} << slot_bits) - 1;
-constexpr data_type max_bound = (data_type{1} << 32) - 1;
+constexpr key_type max_bound = (key_type{1} << 32) - 1;
 
 #ifdef PQ_MONOTONE
 // Children often share the upper bound of their parent, so a monotone heap must
@@ -46,12 +45,12 @@ using pq_type = BENCH_PQ<key_type>;
 
 struct Result {
     long long time_ns = 0;
-    data_type solution = 0;
+    key_type solution = 0;
     long long processed_nodes = 0;
 };
 
 template <typename PQ>
-Result knapsack(KnapsackInstance<data_type> const& instance, Papi& papi) {
+Result knapsack(KnapsackInstance<key_type> const& instance, Papi& papi) {
     Result result;
     std::vector<Node> nodes;
     nodes.reserve(std::size_t{1} << 24);
@@ -78,9 +77,7 @@ Result knapsack(KnapsackInstance<data_type> const& instance, Papi& papi) {
             slot = free_slots[--free_slots_end];
             nodes[static_cast<std::size_t>(slot)] = node;
         }
-        pq.push(
-            (static_cast<key_type>(max_bound - node.upper_bound) << slot_bits) |
-            slot);
+        pq.push(((max_bound - node.upper_bound) << slot_bits) | slot);
         ++size;
     };
     papi.start();
@@ -161,15 +158,15 @@ int main(int argc, char* argv[]) {
     }
 
     std::clog << "Reading instance...\n";
-    KnapsackInstance<data_type> instance;
+    KnapsackInstance<key_type> instance;
     try {
-        instance = KnapsackInstance<data_type>(instance_file);
+        instance = KnapsackInstance<key_type>(instance_file);
     } catch (std::runtime_error const& e) {
         std::cerr << "Error: " << instance_file.string() << ": " << e.what()
                   << '\n';
         return EXIT_FAILURE;
     }
-    data_type value_sum = 0;
+    key_type value_sum = 0;
     for (std::size_t i = 0; i < instance.size(); ++i) {
         value_sum += instance.value(i);
     }

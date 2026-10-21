@@ -32,7 +32,6 @@ Result dijkstra(Graph const& graph, std::size_t source, Papi& papi) {
     auto const id_bits =
         static_cast<unsigned>(std::bit_width(graph.num_nodes()));
     auto const id_mask = (key_type{1} << id_bits) - 1;
-    auto const max_distance = std::numeric_limits<key_type>::max() >> id_bits;
     Result result;
     result.distances.assign(graph.num_nodes(),
                             std::numeric_limits<long long>::max());
@@ -154,7 +153,6 @@ int main(int argc, char* argv[]) {
             }
             return a < b;
         });
-    auto const pops = result.processed_nodes + result.ignored_nodes;
     std::clog << "= Results =\n";
     std::clog << "Time (s): " << std::fixed << std::setprecision(3)
               << static_cast<double>(result.time_ns) * 1e-9 << '\n';
