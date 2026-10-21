@@ -1,4 +1,4 @@
-#include "heaps.hpp"
+#include "pq.hpp"
 #include "util/json.hpp"
 #include "util/knapsack_instance.hpp"
 #include "util/papi.hpp"
@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-using data_type = unsigned long;
+using data_type = std::int64_t;
 
 struct Node {
     data_type upper_bound;
@@ -26,29 +26,28 @@ struct Node {
     data_type value;
 };
 
-// Nodes live in an arena whose slots are reused. Keys pack the inverted upper
-// bound into the high and the slot into the low bits, so that every min-heap,
-// including the SIMD and radix heaps, works on plain integers.
 using key_type = std::int64_t;
 constexpr unsigned slot_bits = 31;
 constexpr key_type slot_mask = (key_type{1} << slot_bits) - 1;
 constexpr data_type max_bound = (data_type{1} << 32) - 1;
 
-// Children often share the upper bound of their parent, so the radix heap must
-// only see the bound to stay monotone
+#ifdef PQ_MONOTONE
+// Children often share the upper bound of their parent, so a monotone heap must
+// only see the bound
 struct BoundOfKey {
     key_type operator()(key_type key) const noexcept {
         return key >> slot_bits;
     }
 };
-using radix_heap_bound = tlx::RadixHeap<key_type, BoundOfKey, key_type>;
+using pq_type = BENCH_PQ<key_type, BoundOfKey>;
+#else
+using pq_type = BENCH_PQ<key_type>;
+#endif
 
 struct Result {
     long long time_ns = 0;
     data_type solution = 0;
     long long processed_nodes = 0;
-    std::size_t sum_sizes = 0;
-    std::size_t max_size = 0;
 };
 
 template <typename PQ>
@@ -56,24 +55,32 @@ Result knapsack(KnapsackInstance<data_type> const& instance, Papi& papi) {
     Result result;
     std::vector<Node> nodes;
     nodes.reserve(std::size_t{1} << 24);
+    // The free slots are distinct slots of nodes, so free_slots never needs
+    // more entries than nodes and grows with it. Freeing a slot then needs no
+    // capacity check.
     std::vector<key_type> free_slots;
+    free_slots.reserve(std::size_t{1} << 24);
+    std::size_t free_slots_end = 0;
     PQ pq;
     std::size_t size = 0;
     auto push = [&](Node const& node) {
         key_type slot = 0;
-        if (free_slots.empty()) {
+        if (free_slots_end == 0) {
             slot = static_cast<key_type>(nodes.size());
             if (slot > slot_mask) [[unlikely]] {
-                std::cerr << "Error: more than " << slot_mask + 1 << " nodes in the queue\n";
+                std::cerr << "Error: more than " << slot_mask + 1
+                          << " nodes in the queue\n";
                 std::exit(EXIT_FAILURE);
             }
             nodes.push_back(node);
+            free_slots.resize(nodes.size());
         } else {
-            slot = free_slots.back();
-            free_slots.pop_back();
+            slot = free_slots[--free_slots_end];
             nodes[static_cast<std::size_t>(slot)] = node;
         }
-        pq.push((static_cast<key_type>(max_bound - node.upper_bound) << slot_bits) | slot);
+        pq.push(
+            (static_cast<key_type>(max_bound - node.upper_bound) << slot_bits) |
+            slot);
         ++size;
     };
     papi.start();
@@ -85,22 +92,23 @@ Result knapsack(KnapsackInstance<data_type> const& instance, Papi& papi) {
     }
     while (size != 0) {
         key_type const key = pq.top();
-        result.sum_sizes += size;
         pq.pop();
         --size;
         auto const slot = key & slot_mask;
         auto node = nodes[static_cast<std::size_t>(slot)];
-        free_slots.push_back(slot);
+        free_slots[free_slots_end++] = slot;
         if (node.upper_bound <= result.solution) {
             break;
         }
-        auto [lb, ub] = instance.compute_bounds_linear(node.free_capacity, node.index + 1);
+        auto [lb, ub] =
+            instance.compute_bounds_linear(node.free_capacity, node.index + 1);
         if (node.value + lb > result.solution) {
             result.solution = node.value + lb;
         }
         if (node.index + 2 < instance.size()) {
             if (node.value + ub > result.solution) {
-                push(Node{node.value + ub, node.index + 1, node.free_capacity, node.value});
+                push(Node{node.value + ub, node.index + 1, node.free_capacity,
+                          node.value});
             }
             if (node.free_capacity >= instance.weight(node.index)) {
                 node.value += instance.value(node.index);
@@ -109,7 +117,6 @@ Result knapsack(KnapsackInstance<data_type> const& instance, Papi& papi) {
                 push(node);
             }
         }
-        result.max_size = std::max(result.max_size, size);
         ++result.processed_nodes;
     }
     auto t_end = std::chrono::steady_clock::now();
@@ -118,38 +125,14 @@ Result knapsack(KnapsackInstance<data_type> const& instance, Papi& papi) {
     return result;
 }
 
-using knapsack_function = Result (*)(KnapsackInstance<data_type> const&, Papi&);
-
-constexpr std::pair<std::string_view, knapsack_function> pqs[] = {
-    {"std_pq", &knapsack<std_pq<key_type>>},
-    {"mq_pq", &knapsack<mq_pq<key_type>>},
-    {"boost_4_ary_heap", &knapsack<boost_4_ary_heap<key_type>>},
-    {"boost_8_ary_heap", &knapsack<boost_8_ary_heap<key_type>>},
-    {"boost_16_ary_heap", &knapsack<boost_16_ary_heap<key_type>>},
-    {"fib_heap", &knapsack<fib_heap<key_type>>},
-    {"pairing_heap", &knapsack<pairing_heap<key_type>>},
-    {"merge_heap", &knapsack<merge_heap<key_type>>},
-    {"s3q_queue", &knapsack<s3q_queue<key_type>>},
-    {"radix_heap", &knapsack<radix_heap_bound>},
-    {"quick_heap_avx2", &knapsack<quick_heap_avx2<key_type>>},
-#ifdef __AVX512F__
-    {"quick_heap_avx512", &knapsack<quick_heap_avx512<key_type>>},
-#endif
-};
-
 [[noreturn]] void usage(char const* name, int status) {
     auto& out = status == EXIT_SUCCESS ? std::cout : std::cerr;
-    out << "Usage: " << name << " --pq PQ [--count-event EVENT]... INSTANCE\n"
-        << "  --pq PQ               One of";
-    for (auto const& [pq_name, _] : pqs) {
-        out << ' ' << pq_name;
-    }
-    out << "\n  --count-event EVENT   PAPI event counted while the search runs\n";
+    out << "Usage: " << name << " [--count-event EVENT]... INSTANCE\n"
+        << "  --count-event EVENT   PAPI event counted while the search runs\n";
     std::exit(status);
 }
 
 int main(int argc, char* argv[]) {
-    std::string pq_name;
     std::vector<std::string> events;
     std::filesystem::path instance_file;
     std::vector<std::string_view> args(argv + 1, argv + argc);
@@ -163,8 +146,6 @@ int main(int argc, char* argv[]) {
         };
         if (args[i] == "-h" || args[i] == "--help") {
             usage(argv[0], EXIT_SUCCESS);
-        } else if (args[i] == "--pq") {
-            pq_name = value();
         } else if (args[i] == "--count-event") {
             events.push_back(value());
         } else if (instance_file.empty() && !args[i].starts_with("-")) {
@@ -178,18 +159,14 @@ int main(int argc, char* argv[]) {
         std::cerr << "Error: no instance given\n";
         usage(argv[0], EXIT_FAILURE);
     }
-    auto it = std::ranges::find(pqs, pq_name, [](auto const& p) { return p.first; });
-    if (it == std::end(pqs)) {
-        std::cerr << "Error: unknown pq '" << pq_name << "'\n";
-        usage(argv[0], EXIT_FAILURE);
-    }
 
     std::clog << "Reading instance...\n";
     KnapsackInstance<data_type> instance;
     try {
         instance = KnapsackInstance<data_type>(instance_file);
     } catch (std::runtime_error const& e) {
-        std::cerr << "Error: " << instance_file.string() << ": " << e.what() << '\n';
+        std::cerr << "Error: " << instance_file.string() << ": " << e.what()
+                  << '\n';
         return EXIT_FAILURE;
     }
     data_type value_sum = 0;
@@ -197,10 +174,12 @@ int main(int argc, char* argv[]) {
         value_sum += instance.value(i);
     }
     if (value_sum > max_bound) {
-        std::cerr << "Error: the sum of all values " << value_sum << " does not fit into 32 bits\n";
+        std::cerr << "Error: the sum of all values " << value_sum
+                  << " does not fit into 32 bits\n";
         return EXIT_FAILURE;
     }
-    std::clog << "Instance has " << instance.size() << " items and " << instance.capacity() << " capacity\n";
+    std::clog << "Instance has " << instance.size() << " items and "
+              << instance.capacity() << " capacity\n";
 
     std::optional<Papi> papi;
     try {
@@ -211,19 +190,14 @@ int main(int argc, char* argv[]) {
     }
 
     std::clog << "Working...\n";
-    auto result = it->second(instance, *papi);
+    auto result = knapsack<pq_type>(instance, *papi);
     std::clog << "Done\n\n";
 
-    auto const average_size = result.processed_nodes == 0 ? 0.0
-                                                          : static_cast<double>(result.sum_sizes) /
-                                                                static_cast<double>(result.processed_nodes);
     std::clog << "= Results =\n";
-    std::clog << "Time (s): " << std::fixed << std::setprecision(3) << static_cast<double>(result.time_ns) * 1e-9
-              << '\n';
+    std::clog << "Time (s): " << std::fixed << std::setprecision(3)
+              << static_cast<double>(result.time_ns) * 1e-9 << '\n';
     std::clog << "Solution: " << result.solution << '\n';
     std::clog << "Processed nodes: " << result.processed_nodes << '\n';
-    std::clog << "Average PQ size: " << average_size << '\n';
-    std::clog << "Max PQ size: " << result.max_size << '\n';
     for (std::size_t i = 0; i < events.size(); ++i) {
         std::clog << events[i] << ": " << papi->counters()[i] << '\n';
     }
@@ -243,8 +217,6 @@ int main(int argc, char* argv[]) {
             obj.entry("time_ns", result.time_ns);
             obj.entry("processed_nodes", result.processed_nodes);
             obj.entry("solution", result.solution);
-            obj.entry("average_pq_size", average_size);
-            obj.entry("max_pq_size", result.max_size);
             obj.object("papi", [&](json::Object& counters) {
                 for (std::size_t i = 0; i < events.size(); ++i) {
                     counters.entry(events[i], papi->counters()[i]);

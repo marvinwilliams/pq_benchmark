@@ -1,7 +1,7 @@
 #include "competitors/merge_heap.hpp"
 #include "competitors/merge_heap_simd.hpp"
 #include "competitors/mq_heap.hpp"
-#include "competitors/quick_heap.hpp"
+#include "competitors/quick_heap_scalar.hpp"
 #include "competitors/quick_heap_simd.hpp"
 #include "competitors/quick_heap_rust_port.hpp"
 
@@ -52,7 +52,8 @@ TEMPLATE_TEST_CASE("heap supports basic operations", "[heap][basic]",
                    (QuickHeapRs<std::int32_t>),
                    (QuickHeapRs<std::int64_t>),
                    (multiqueue::value_merge_heap<int, std::ranges::less>),
-                   (MergeHeapAVX2<std::int32_t>) AVX512_HEAPS RUST_HEAPS) {
+                   (MergeHeapAVX2<std::int32_t>),
+                   (MergeHeapAVX2<std::int64_t>) AVX512_HEAPS RUST_HEAPS) {
     using heap_t = TestType;
 
     auto heap = heap_t{};
@@ -161,7 +162,8 @@ TEMPLATE_TEST_CASE("heap works with randomized workloads", "[heap][workloads]",
                    (QuickHeapRs<std::int32_t>),
                    (QuickHeapRs<std::int64_t>),
                    (multiqueue::value_merge_heap<int, std::ranges::less>),
-                   (MergeHeapAVX2<std::int32_t>) AVX512_HEAPS RUST_HEAPS) {
+                   (MergeHeapAVX2<std::int32_t>),
+                   (MergeHeapAVX2<std::int64_t>) AVX512_HEAPS RUST_HEAPS) {
     using heap_t = TestType;
 
     auto heap = heap_t{};
@@ -259,7 +261,8 @@ TEMPLATE_TEST_CASE("heap handles many equal elements", "[heap][duplicates]",
                    (QuickHeapRs<std::int32_t>),
                    (QuickHeapRs<std::int64_t>),
                    (multiqueue::value_merge_heap<int, std::ranges::less>),
-                   (MergeHeapAVX2<std::int32_t>) AVX512_HEAPS RUST_HEAPS) {
+                   (MergeHeapAVX2<std::int32_t>),
+                   (MergeHeapAVX2<std::int64_t>) AVX512_HEAPS RUST_HEAPS) {
     using heap_t = TestType;
 
     auto heap = heap_t{};

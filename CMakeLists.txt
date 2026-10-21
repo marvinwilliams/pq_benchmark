@@ -27,8 +27,6 @@ if(WITH_RUST_QUICKHEAP)
   find_package(Threads REQUIRED)
   set(RUST_QUICKHEAP_TARGET_DIR "${CMAKE_BINARY_DIR}/rust-quickheap")
   set(RUST_QUICKHEAP_LIB "${RUST_QUICKHEAP_TARGET_DIR}/release/libquickheap.a")
-  # Uses the crate's .cargo/config.toml (target-cpu=native). Cargo decides
-  # itself whether anything needs rebuilding.
   add_custom_target(
     rust_quickheap_build
     COMMAND ${CARGO} rustc --release --lib --features c --crate-type staticlib
@@ -67,7 +65,6 @@ if(BUILD_BENCHMARKS)
         SYSTEM)
 
   find_package(Boost)
-  # Before s3q, which would otherwise populate its own tlx without adding it.
   FetchContent_MakeAvailable(tlx)
   add_subdirectory(competitors/s3q)
   set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
